@@ -69,6 +69,12 @@ green-corridor-sim/
 - Place search runs only when Search is pressed, in line with the free service's usage limits.
 - Device location accuracy varies. It is typically much better on phones than on laptops.
 
+## Privacy
+
+- The device location is used only inside the browser to place the marker. It is not stored or sent to any server operated by this project.
+- Place searches are sent to OpenStreetMap's Nominatim service, route requests to the OSRM demo server, and map tiles are loaded from Esri. These services can see the visitor's IP address, as any website would.
+- The project has no backend, accounts, cookies or analytics.
+
 ## Future improvements
 
 - Real traffic signal locations and live traffic data
