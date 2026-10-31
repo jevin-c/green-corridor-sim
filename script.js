@@ -397,12 +397,19 @@ async function drawRoute() {
   }
 }
 
+// Builds a popup from plain text only, so a place name can never inject HTML
+function makePopup(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div;
+}
+
 // ---------- Place the two markers ----------
 function setEmergency(latlng, label) {
   if (startMarker) map.removeLayer(startMarker);
   startMarker = L.marker(latlng, { icon: emergencyIcon })
     .addTo(map)
-    .bindPopup(label);
+    .bindPopup(makePopup(label));
   updatePanel();
   drawRoute();
 }
@@ -411,7 +418,7 @@ function setHospital(latlng, label) {
   if (endMarker) map.removeLayer(endMarker);
   endMarker = L.marker(latlng, { icon: hospitalIcon })
     .addTo(map)
-    .bindPopup(label);
+    .bindPopup(makePopup(label));
   updatePanel();
   drawRoute();
 }

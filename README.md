@@ -57,6 +57,12 @@ Do not open `index.html` by double-clicking. Some map tiles and the location fea
 - Place search uses the free Nominatim service, so it only runs when you press Search or Enter, and it can be slow at times.
 - Live location on a laptop can be off by a few hundred metres or more.
 
+## Privacy
+
+- Your live location is used only inside your browser to place the marker. It is not stored or sent to any server of mine.
+- When you search a place, the text is sent to OpenStreetMap's Nominatim service. Routes send coordinates to the OSRM demo server, and map tiles come from Esri. These services can see your IP address, as any website would.
+- This project has no backend, no accounts, no cookies and no analytics.
+
 ## Future improvements
 
 - Use real traffic signal locations and live traffic data
