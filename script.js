@@ -32,6 +32,9 @@ const step2 = document.getElementById('step2');
 // ---------- State ----------
 let startMarker = null;
 let endMarker = null;
+let routeLine = null;     // the blue line on the map
+let routeCoords = [];     // route points as [lat, lng] (used for animation in Step 7)
+let routeRequestId = 0;   // used to ignore outdated route responses
 
 // ---------- Marker icons ----------
 function makeIcon(letter, cssClass) {
@@ -70,7 +73,66 @@ function updatePanel() {
   } else {
     step1.classList.add('done');
     step2.classList.add('done');
-    statusText.textContent = 'Locations set. Route comes in the next step.';
+    statusText.textContent = 'Finding the fastest route...';
+  }
+}
+
+// ---------- Route (OSRM free demo server) ----------
+function removeRoute() {
+  routeRequestId++;           // cancels any route request still in progress
+  if (routeLine) map.removeLayer(routeLine);
+  routeLine = null;
+  routeCoords = [];
+}
+
+async function drawRoute() {
+  removeRoute();
+  if (!startMarker || !endMarker) return;
+
+  const myRequest = routeRequestId;
+  const a = startMarker.getLatLng();
+  const b = endMarker.getLatLng();
+
+  // OSRM wants longitude first, then latitude
+  const url =
+    'https://router.project-osrm.org/route/v1/driving/' +
+    a.lng + ',' + a.lat + ';' + b.lng + ',' + b.lat +
+    '?overview=full&geometries=geojson';
+
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Routing failed');
+    const data = await res.json();
+
+    // A newer request or a reset happened while we waited, so ignore this one
+    if (myRequest !== routeRequestId) return;
+
+    if (data.code !== 'Ok' || !data.routes || data.routes.length === 0) {
+      statusText.textContent = 'No road route found between these two points. Try different locations.';
+      return;
+    }
+
+    const route = data.routes[0];
+
+    // GeoJSON gives [lng, lat]; Leaflet needs [lat, lng], so flip each pair
+    routeCoords = route.geometry.coordinates.map(function (c) {
+      return [c[1], c[0]];
+    });
+
+    routeLine = L.polyline(routeCoords, {
+      color: '#29b6f6',
+      weight: 6,
+      opacity: 0.9
+    }).addTo(map);
+
+    map.fitBounds(routeLine.getBounds(), { padding: [60, 60] });
+
+    const km = (route.distance / 1000).toFixed(1);
+    const mins = Math.max(1, Math.round(route.duration / 60));
+    statusText.textContent = 'Route ready: ' + km + ' km, about ' + mins + ' min (normal traffic).';
+  } catch (err) {
+    if (myRequest !== routeRequestId) return;
+    statusText.textContent = 'Could not get the route. Check your internet and try again.';
   }
 }
 
@@ -81,6 +143,7 @@ function setEmergency(latlng, label) {
     .addTo(map)
     .bindPopup(label);
   updatePanel();
+  drawRoute();
 }
 
 function setHospital(latlng, label) {
@@ -89,6 +152,7 @@ function setHospital(latlng, label) {
     .addTo(map)
     .bindPopup(label);
   updatePanel();
+  drawRoute();
 }
 
 // Fills the emergency spot first, then the hospital
@@ -115,7 +179,7 @@ hospitalSelect.addEventListener('change', function () {
   const name = hospitalSelect.options[hospitalSelect.selectedIndex].text;
   showMessage('');
   setHospital(latlng, name);
-  map.flyTo(latlng, 14);
+  if (!startMarker) map.flyTo(latlng, 14);
 });
 
 // ---------- Search (OpenStreetMap Nominatim) ----------
@@ -157,7 +221,7 @@ async function searchPlace() {
         const latlng = L.latLng(parseFloat(place.lat), parseFloat(place.lon));
         const shortName = place.display_name.split(',')[0];
         placeNext(latlng, shortName);
-        map.flyTo(latlng, 16);
+        if (!endMarker) map.flyTo(latlng, 16);
         clearResults();
         searchInput.value = '';
       });
@@ -187,7 +251,7 @@ locateBtn.addEventListener('click', function () {
     function (pos) {
       const latlng = L.latLng(pos.coords.latitude, pos.coords.longitude);
       setEmergency(latlng, 'Your current location');
-      map.flyTo(latlng, 16);
+      if (!endMarker) map.flyTo(latlng, 16);
       showMessage('Location found (accuracy about ' + Math.round(pos.coords.accuracy) + ' m).');
     },
     function (err) {
@@ -205,6 +269,7 @@ locateBtn.addEventListener('click', function () {
 
 // ---------- Reset ----------
 resetBtn.addEventListener('click', function () {
+  removeRoute();
   if (startMarker) map.removeLayer(startMarker);
   if (endMarker) map.removeLayer(endMarker);
   startMarker = null;
