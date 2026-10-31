@@ -177,7 +177,7 @@ label {
   color: #ffcc80;
 }
 
-/* ---------- Select ---------- */
+/* ---------- Select and slider ---------- */
 select {
   width: 100%;
   min-height: 44px;
@@ -188,6 +188,12 @@ select {
   border: 1px solid #3a4256;
   background: #2a3040;
   color: #fff;
+}
+
+#speedSlider {
+  width: 100%;
+  margin: 0 0 14px 0;
+  cursor: pointer;
 }
 
 /* ---------- Buttons (big, easy to tap) ---------- */
@@ -253,6 +259,25 @@ button {
 
 .pin.emergency { background: #e53935; }
 .pin.hospital { background: #1e88e5; }
+
+/* ---------- Ambulance marker ---------- */
+.ambulance {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 4px rgba(229, 57, 53, 0.7), 0 2px 8px rgba(0, 0, 0, 0.7);
+  animation: siren 0.8s infinite;
+}
+
+@keyframes siren {
+  50% { box-shadow: 0 0 0 8px rgba(30, 136, 229, 0.7), 0 2px 8px rgba(0, 0, 0, 0.7); }
+}
 
 /* ---------- Phones: panel moves to the bottom ---------- */
 @media (max-width: 600px) {

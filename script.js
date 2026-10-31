@@ -21,11 +21,14 @@ L.tileLayer(
 const statusText = document.getElementById('status');
 const msgText = document.getElementById('msg');
 const resetBtn = document.getElementById('resetBtn');
+const dispatchBtn = document.getElementById('dispatchBtn');
 const hospitalSelect = document.getElementById('hospitalSelect');
 const searchInput = document.getElementById('searchInput');
 const searchBtn = document.getElementById('searchBtn');
 const resultsList = document.getElementById('results');
 const locateBtn = document.getElementById('locateBtn');
+const speedSlider = document.getElementById('speedSlider');
+const speedLabel = document.getElementById('speedLabel');
 const step1 = document.getElementById('step1');
 const step2 = document.getElementById('step2');
 
@@ -33,8 +36,29 @@ const step2 = document.getElementById('step2');
 let startMarker = null;
 let endMarker = null;
 let routeLine = null;     // the blue line on the map
-let routeCoords = [];     // route points as [lat, lng] (used for animation in Step 7)
+let routeCoords = [];     // route points as [lat, lng]
 let routeRequestId = 0;   // used to ignore outdated route responses
+let routeInfoText = '';   // "Route ready: ..." text, reused after reset of animation
+
+// Animation state
+let ambulanceMarker = null;
+let animationId = null;   // id from requestAnimationFrame
+let lastFrameTime = 0;
+let progress = 0;         // metres travelled along the route
+let segLengths = [];      // length of each small piece of the route (metres)
+let totalLength = 0;      // total route length (metres)
+let animState = 'idle';   // 'idle', 'running', 'paused' or 'finished'
+
+// ---------- Speed slider ----------
+// Speeds are in metres per second of simulated travel (not real ambulance speed)
+const SPEEDS = [150, 300, 600, 1200, 2400];
+const SPEED_NAMES = ['Slow', 'Easy', 'Normal', 'Fast', 'Very fast'];
+
+function updateSpeedLabel() {
+  speedLabel.textContent = SPEED_NAMES[speedSlider.value - 1];
+}
+speedSlider.addEventListener('input', updateSpeedLabel);
+updateSpeedLabel();
 
 // ---------- Marker icons ----------
 function makeIcon(letter, cssClass) {
@@ -48,6 +72,13 @@ function makeIcon(letter, cssClass) {
 
 const emergencyIcon = makeIcon('!', 'emergency');
 const hospitalIcon = makeIcon('H', 'hospital');
+
+const ambulanceIcon = L.divIcon({
+  className: '',
+  html: '<div class="ambulance">🚑</div>',
+  iconSize: [44, 44],
+  iconAnchor: [22, 22]
+});
 
 // ---------- Small helpers ----------
 function showMessage(text) {
@@ -77,12 +108,136 @@ function updatePanel() {
   }
 }
 
+// ---------- Dispatch button text and state ----------
+function updateDispatchButton() {
+  if (animState === 'running') {
+    dispatchBtn.textContent = 'Pause';
+    dispatchBtn.disabled = false;
+  } else if (animState === 'paused') {
+    dispatchBtn.textContent = 'Resume';
+    dispatchBtn.disabled = false;
+  } else if (animState === 'finished') {
+    dispatchBtn.textContent = 'Dispatch again';
+    dispatchBtn.disabled = false;
+  } else {
+    dispatchBtn.textContent = 'Dispatch';
+    dispatchBtn.disabled = routeCoords.length === 0;
+  }
+}
+
+// ---------- Ambulance animation ----------
+function prepareRouteLengths() {
+  segLengths = [];
+  totalLength = 0;
+  for (let i = 0; i < routeCoords.length - 1; i++) {
+    const d = map.distance(routeCoords[i], routeCoords[i + 1]);
+    segLengths.push(d);
+    totalLength += d;
+  }
+}
+
+// Finds the exact point on the route after travelling 'dist' metres
+function pointAtDistance(dist) {
+  let remaining = dist;
+  for (let i = 0; i < segLengths.length; i++) {
+    if (remaining <= segLengths[i]) {
+      const t = segLengths[i] === 0 ? 0 : remaining / segLengths[i];
+      const a = routeCoords[i];
+      const b = routeCoords[i + 1];
+      return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+    }
+    remaining -= segLengths[i];
+  }
+  return routeCoords[routeCoords.length - 1];
+}
+
+function animationStep(timestamp) {
+  if (animState !== 'running') return;
+
+  // Time since the last frame, capped so a background tab does not cause a jump
+  const dt = Math.min((timestamp - lastFrameTime) / 1000, 0.1);
+  lastFrameTime = timestamp;
+
+  progress += SPEEDS[speedSlider.value - 1] * dt;
+
+  if (progress >= totalLength) {
+    ambulanceMarker.setLatLng(routeCoords[routeCoords.length - 1]);
+    animState = 'finished';
+    statusText.textContent = 'Ambulance has reached the hospital.';
+    updateDispatchButton();
+    return;
+  }
+
+  ambulanceMarker.setLatLng(pointAtDistance(progress));
+  const percent = Math.round((progress / totalLength) * 100);
+  statusText.textContent = 'Ambulance on the way... ' + percent + '%';
+
+  animationId = requestAnimationFrame(animationStep);
+}
+
+function startAnimation() {
+  if (routeCoords.length < 2) return;
+
+  prepareRouteLengths();
+  progress = 0;
+
+  if (ambulanceMarker) map.removeLayer(ambulanceMarker);
+  ambulanceMarker = L.marker(routeCoords[0], {
+    icon: ambulanceIcon,
+    zIndexOffset: 1000,
+    interactive: false
+  }).addTo(map);
+
+  animState = 'running';
+  lastFrameTime = performance.now();
+  updateDispatchButton();
+  animationId = requestAnimationFrame(animationStep);
+}
+
+function pauseAnimation() {
+  animState = 'paused';
+  cancelAnimationFrame(animationId);
+  statusText.textContent = 'Paused at ' + Math.round((progress / totalLength) * 100) + '%.';
+  updateDispatchButton();
+}
+
+function resumeAnimation() {
+  animState = 'running';
+  lastFrameTime = performance.now();
+  updateDispatchButton();
+  animationId = requestAnimationFrame(animationStep);
+}
+
+// Stops everything and removes the ambulance (used on reset or when the route changes)
+function stopAnimation() {
+  cancelAnimationFrame(animationId);
+  animationId = null;
+  animState = 'idle';
+  progress = 0;
+  if (ambulanceMarker) map.removeLayer(ambulanceMarker);
+  ambulanceMarker = null;
+}
+
+dispatchBtn.addEventListener('click', function () {
+  if (animState === 'running') {
+    pauseAnimation();
+  } else if (animState === 'paused') {
+    resumeAnimation();
+  } else {
+    // idle or finished: start from the beginning
+    startAnimation();
+  }
+});
+
 // ---------- Route (OSRM free demo server) ----------
 function removeRoute() {
   routeRequestId++;           // cancels any route request still in progress
+  stopAnimation();
   if (routeLine) map.removeLayer(routeLine);
   routeLine = null;
   routeCoords = [];
+  routeInfoText = '';
+  updateDispatchButton();
 }
 
 async function drawRoute() {
@@ -129,7 +284,9 @@ async function drawRoute() {
 
     const km = (route.distance / 1000).toFixed(1);
     const mins = Math.max(1, Math.round(route.duration / 60));
-    statusText.textContent = 'Route ready: ' + km + ' km, about ' + mins + ' min (normal traffic).';
+    routeInfoText = 'Route ready: ' + km + ' km, about ' + mins + ' min (normal traffic). Press Dispatch.';
+    statusText.textContent = routeInfoText;
+    updateDispatchButton();
   } catch (err) {
     if (myRequest !== routeRequestId) return;
     statusText.textContent = 'Could not get the route. Check your internet and try again.';
@@ -281,3 +438,6 @@ resetBtn.addEventListener('click', function () {
   map.setView(MUMBAI, 12);
   updatePanel();
 });
+
+// Set the correct button state when the page first loads
+updateDispatchButton();

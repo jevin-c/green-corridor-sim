@@ -26,15 +26,15 @@
     <!-- Search -->
     <div class="search-row">
       <input
-    type="text"
-    id="searchInput"
-    placeholder="Search a place or address..."
-    autocomplete="off"
-    autocorrect="off"
-     autocapitalize="off"
-     spellcheck="false"
-    />
-<button id="searchBtn">Search</button>
+        type="text"
+        id="searchInput"
+        placeholder="Search a place or address..."
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="off"
+        spellcheck="false"
+      />
+      <button id="searchBtn">Search</button>
     </div>
     <ul id="results"></ul>
 
@@ -53,6 +53,10 @@
       <option value="19.0368,72.8618">Sion Hospital</option>
       <option value="18.9633,72.8339">JJ Hospital, Byculla</option>
     </select>
+
+    <!-- Speed -->
+    <label for="speedSlider">Simulation speed: <span id="speedLabel">Normal</span></label>
+    <input type="range" id="speedSlider" min="1" max="5" value="3" />
 
     <div class="btn-row">
       <button id="dispatchBtn" disabled>Dispatch</button>
