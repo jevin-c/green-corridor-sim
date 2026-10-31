@@ -6,8 +6,6 @@ A web-based simulation of a **green corridor for ambulances** in Mumbai. Pick an
 
 **Live demo:** https://jevin-c.github.io/green-corridor-sim/
 
-![Demo](assets/demo.gif)
-
 ## The problem
 
 Ambulances lose precious minutes stuck at red signals in heavy city traffic. A green corridor clears the signals along the ambulance's route so it can reach the hospital faster. This project is a simple simulation of that idea.
