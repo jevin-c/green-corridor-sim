@@ -1,80 +1,86 @@
-# 🚑 Green Corridor Simulator
+# Green Corridor Simulator
 
-A web-based simulation of a **green corridor for ambulances** in Mumbai. Pick an emergency location and a hospital, and watch an ambulance follow the fastest route while the traffic signals ahead of it turn green.
+A web-based simulation of an ambulance **green corridor** for Mumbai. Choose an emergency location and a hospital, and watch an ambulance follow the fastest route while the traffic signals ahead of it turn green.
 
-> Built as my project for the **Bit n Build Ideathon 2026**.
+> Developed for the **Bit n Build Ideathon 2026**.
 
-**Live demo:** https://jevin-c.github.io/green-corridor-sim/
+**Live demo:** coming soon
 
-## The problem
+## Overview
 
-Ambulances lose precious minutes stuck at red signals in heavy city traffic. A green corridor clears the signals along the ambulance's route so it can reach the hospital faster. This project is a simple simulation of that idea.
+Ambulances lose valuable minutes at red signals in dense city traffic. A green corridor clears the signals along an ambulance's route so it can reach the hospital faster. This project is a simple, visual simulation of that idea, built to explain how such a system could work.
 
 ## Features
 
 - Satellite map of Mumbai
-- Set the emergency location by tapping the map, searching a place, or using live GPS location
-- Pick a hospital from a quick-pick list, by searching, or by tapping the map
-- Fastest road route drawn automatically, with distance and estimated time
-- Animated ambulance with Dispatch, Pause, Resume and a speed slider
-- Traffic signals along the route turn green as the ambulance approaches and go back to red after it passes
+- Set the emergency location by tapping the map, searching for a place, or using the device's live location
+- Choose a hospital from a quick-pick list, by search, or by tapping the map
+- Fastest road route drawn automatically, with distance and estimated travel time
+- Animated ambulance with Dispatch, Pause, Resume and an adjustable simulation speed
+- Simulated traffic signals along the route that turn green as the ambulance approaches and return to red after it passes
 - Live counter of signals cleared
-- Emergency-style dark interface with large buttons, and a mobile-friendly layout
-
-## Tech stack
-
-- HTML, CSS, JavaScript (no frameworks, no build step)
-- [Leaflet](https://leafletjs.com/) for the map
-- [Esri World Imagery](https://www.arcgis.com/) for satellite tiles
-- [OSRM](https://project-osrm.org/) for routing
-- [Nominatim (OpenStreetMap)](https://nominatim.org/) for place search
+- High-contrast interface with large controls, and a responsive layout for phones
 
 ## How it works
 
-1. The emergency location and hospital are set by the user.
-2. OSRM returns the road route between them as a list of coordinates.
-3. Simulated signals are placed along the route at fixed gaps.
-4. On every animation frame the ambulance moves along the route. Each signal checks the distance to the ambulance: within 300 m it turns green, and after the ambulance passes it returns to red.
+1. The user sets an emergency location and a hospital.
+2. The routing service returns the road route between them as a list of coordinates.
+3. Simulated signals are placed along the route at regular intervals.
+4. On every animation frame the ambulance moves along the route. Each signal measures its distance to the ambulance: within 300 m it turns green, and once the ambulance has passed it returns to red.
 
-## Run it locally
+## Tech stack
 
-1. Clone the repo:
+| Area | Technology |
+| --- | --- |
+| Front end | HTML, CSS, JavaScript (no frameworks, no build step) |
+| Map | [Leaflet](https://leafletjs.com/) |
+| Satellite imagery | [Esri World Imagery](https://www.arcgis.com/) |
+| Routing | [OSRM](https://project-osrm.org/) |
+| Place search | [Nominatim](https://nominatim.org/) (OpenStreetMap) |
+
+## Run locally
+
+1. Clone the repository:
    ```
    git clone https://github.com/jevin-c/green-corridor-sim.git
    ```
 2. Open the folder in VS Code.
-3. Install the **Live Server** extension, right-click `index.html` and choose **Open with Live Server**.
+3. Install the **Live Server** extension, right-click `index.html`, and choose **Open with Live Server**.
 
-Do not open `index.html` by double-clicking. Some map tiles and the location feature need a local server or https.
+Opening `index.html` directly from the file system is not supported. Map tiles and the location feature require a local server or HTTPS.
 
-## Limitations (please read)
+## Project structure
 
-- This is a **simulation only**. It does not control any real traffic signals.
-- The signal positions are placed automatically at regular gaps, not taken from real signal data.
-- Routes and times come from OSRM's public demo server and do **not** include live traffic.
-- The ambulance speed on screen is a simulation speed, not a real speed.
+```
+green-corridor-sim/
+├── index.html    Page layout and control panel
+├── style.css     Styling and responsive layout
+├── script.js     Map, search, routing, animation and signal logic
+└── README.md
+```
+
+## Limitations
+
+- This is a **simulation only**. It does not connect to or control any real traffic signals.
+- Signal positions are generated at regular intervals along the route and are not based on real signal data.
+- Routes and travel times come from a public demo routing server and do not include live traffic.
+- The on-screen ambulance speed is a simulation speed, not a real vehicle speed.
 - Hospital coordinates in the quick-pick list are approximate.
-- Place search uses the free Nominatim service, so it only runs when you press Search or Enter, and it can be slow at times.
-- Live location on a laptop can be off by a few hundred metres or more.
-
-## Privacy
-
-- Your live location is used only inside your browser to place the marker. It is not stored or sent to any server of mine.
-- When you search a place, the text is sent to OpenStreetMap's Nominatim service. Routes send coordinates to the OSRM demo server, and map tiles come from Esri. These services can see your IP address, as any website would.
-- This project has no backend, no accounts, no cookies and no analytics.
+- Place search runs only when Search is pressed, in line with the free service's usage limits.
+- Device location accuracy varies. It is typically much better on phones than on laptops.
 
 ## Future improvements
 
-- Use real traffic signal locations and live traffic data
-- Pick the nearest hospital automatically
-- Multiple ambulances at the same time
-- Driver alerts and a driver-side view
-- Support for other cities
+- Real traffic signal locations and live traffic data
+- Automatic selection of the nearest suitable hospital
+- Multiple ambulances running at the same time
+- A driver-side view with voice and visual alerts
+- Support for additional cities
 
 ## Credits
 
-Map data © OpenStreetMap contributors. Satellite tiles © Esri, Maxar, Earthstar Geographics. Routing by OSRM.
+Map data &copy; OpenStreetMap contributors. Satellite imagery &copy; Esri, Maxar, Earthstar Geographics. Routing by the Open Source Routing Machine (OSRM).
 
 ## Author
 
-**Jevin Castelino** - First-year engineering student
+Developed by [@jevin-c](https://github.com/jevin-c)
