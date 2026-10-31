@@ -10,6 +10,58 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+  <div id="panel">
+    <div class="panel-header">
+      <span class="live-dot"></span>
+      <h1>Green Corridor Simulator</h1>
+    </div>
+
+    <div class="steps">
+      <div class="step active" id="step1"><span>1</span> Emergency location</div>
+      <div class="step" id="step2"><span>2</span> Hospital</div>
+    </div>
+
+    <p id="status">Tap the map, search, or use your location to mark the emergency.</p>
+
+    <!-- Search -->
+    <div class="search-row">
+      <input
+    type="text"
+    id="searchInput"
+    placeholder="Search a place or address..."
+    autocomplete="off"
+    autocorrect="off"
+     autocapitalize="off"
+     spellcheck="false"
+    />
+<button id="searchBtn">Search</button>
+    </div>
+    <ul id="results"></ul>
+
+    <!-- Live location -->
+    <button id="locateBtn" class="wide-btn">Use my location as emergency</button>
+
+    <p id="msg"></p>
+
+    <label for="hospitalSelect">Quick pick hospital</label>
+    <select id="hospitalSelect">
+      <option value="">Select a hospital...</option>
+      <option value="19.0023,72.8420">KEM Hospital, Parel</option>
+      <option value="19.0509,72.8294">Lilavati Hospital, Bandra</option>
+      <option value="19.1311,72.8258">Kokilaben Hospital, Andheri</option>
+      <option value="19.0988,72.8426">Nanavati Hospital, Vile Parle</option>
+      <option value="19.0368,72.8618">Sion Hospital</option>
+      <option value="18.9633,72.8339">JJ Hospital, Byculla</option>
+    </select>
+
+    <div class="btn-row">
+      <button id="dispatchBtn" disabled>Dispatch</button>
+      <button id="resetBtn">Reset</button>
+    </div>
+
+    <p class="footnote">Simulation only. No real traffic signals are controlled.</p>
+  </div>
+
   <div id="map"></div>
 
   <!-- Leaflet JS -->
