@@ -29,6 +29,7 @@ const resultsList = document.getElementById('results');
 const locateBtn = document.getElementById('locateBtn');
 const speedSlider = document.getElementById('speedSlider');
 const speedLabel = document.getElementById('speedLabel');
+const signalInfo = document.getElementById('signalInfo');
 const step1 = document.getElementById('step1');
 const step2 = document.getElementById('step2');
 
@@ -38,7 +39,6 @@ let endMarker = null;
 let routeLine = null;     // the blue line on the map
 let routeCoords = [];     // route points as [lat, lng]
 let routeRequestId = 0;   // used to ignore outdated route responses
-let routeInfoText = '';   // "Route ready: ..." text, reused after reset of animation
 
 // Animation state
 let ambulanceMarker = null;
@@ -48,6 +48,18 @@ let progress = 0;         // metres travelled along the route
 let segLengths = [];      // length of each small piece of the route (metres)
 let totalLength = 0;      // total route length (metres)
 let animState = 'idle';   // 'idle', 'running', 'paused' or 'finished'
+
+// Traffic signal state
+let signals = [];         // each: { dist, marker, state }
+let clearedCount = 0;
+
+// Signal settings (all distances in metres)
+const SIGNAL_FIRST = 400;     // first signal this far from the start
+const SIGNAL_SPACING = 600;   // gap between signals
+const SIGNAL_END_GAP = 250;   // no signal this close to the hospital
+const GREEN_RANGE = 300;      // signal turns green when the ambulance is this close
+const PASSED_GAP = 30;        // signal is "passed" once the ambulance is this far beyond it
+const MAX_SIGNALS = 30;
 
 // ---------- Speed slider ----------
 // Speeds are in metres per second of simulated travel (not real ambulance speed)
@@ -125,7 +137,7 @@ function updateDispatchButton() {
   }
 }
 
-// ---------- Ambulance animation ----------
+// ---------- Route geometry helpers ----------
 function prepareRouteLengths() {
   segLengths = [];
   totalLength = 0;
@@ -151,6 +163,83 @@ function pointAtDistance(dist) {
   return routeCoords[routeCoords.length - 1];
 }
 
+// ---------- Traffic signals (green corridor) ----------
+function styleSignal(signal) {
+  if (signal.state === 'green') {
+    signal.marker.setStyle({ fillColor: '#43a047', fillOpacity: 1, radius: 12 });
+    signal.marker.setRadius(12);
+  } else if (signal.state === 'passed') {
+    signal.marker.setStyle({ fillColor: '#e53935', fillOpacity: 0.35 });
+    signal.marker.setRadius(9);
+  } else {
+    signal.marker.setStyle({ fillColor: '#e53935', fillOpacity: 1 });
+    signal.marker.setRadius(9);
+  }
+}
+
+function updateSignalInfo() {
+  if (routeCoords.length === 0) {
+    signalInfo.textContent = '';
+  } else if (signals.length === 0) {
+    signalInfo.textContent = 'No signals on this short route.';
+  } else {
+    signalInfo.textContent = 'Signals cleared: ' + clearedCount + '/' + signals.length;
+  }
+}
+
+function removeSignals() {
+  signals.forEach(function (s) {
+    map.removeLayer(s.marker);
+  });
+  signals = [];
+  clearedCount = 0;
+}
+
+// Places simulated signals at fixed gaps along the route
+function createSignals() {
+  removeSignals();
+  for (
+    let d = SIGNAL_FIRST;
+    d <= totalLength - SIGNAL_END_GAP && signals.length < MAX_SIGNALS;
+    d += SIGNAL_SPACING
+  ) {
+    const marker = L.circleMarker(pointAtDistance(d), {
+      radius: 9,
+      color: '#ffffff',
+      weight: 3,
+      fillColor: '#e53935',
+      fillOpacity: 1,
+      interactive: false   // so map clicks still pass through
+    }).addTo(map);
+    signals.push({ dist: d, marker: marker, state: 'red' });
+  }
+  updateSignalInfo();
+}
+
+// The green corridor logic: called on every animation frame
+function updateSignals(dist) {
+  let cleared = 0;
+  signals.forEach(function (s) {
+    const ahead = s.dist - dist;   // metres between the ambulance and this signal
+    let newState;
+    if (ahead > GREEN_RANGE) {
+      newState = 'red';            // still far away
+    } else if (ahead >= -PASSED_GAP) {
+      newState = 'green';          // ambulance is close: clear the way
+    } else {
+      newState = 'passed';         // ambulance has gone by: back to red
+    }
+    if (newState === 'passed') cleared++;
+    if (newState !== s.state) {
+      s.state = newState;
+      styleSignal(s);
+    }
+  });
+  clearedCount = cleared;
+  updateSignalInfo();
+}
+
+// ---------- Ambulance animation ----------
 function animationStep(timestamp) {
   if (animState !== 'running') return;
 
@@ -162,6 +251,7 @@ function animationStep(timestamp) {
 
   if (progress >= totalLength) {
     ambulanceMarker.setLatLng(routeCoords[routeCoords.length - 1]);
+    updateSignals(totalLength);
     animState = 'finished';
     statusText.textContent = 'Ambulance has reached the hospital.';
     updateDispatchButton();
@@ -169,6 +259,7 @@ function animationStep(timestamp) {
   }
 
   ambulanceMarker.setLatLng(pointAtDistance(progress));
+  updateSignals(progress);
   const percent = Math.round((progress / totalLength) * 100);
   statusText.textContent = 'Ambulance on the way... ' + percent + '%';
 
@@ -180,6 +271,14 @@ function startAnimation() {
 
   prepareRouteLengths();
   progress = 0;
+
+  // Put every signal back to red before a new run
+  signals.forEach(function (s) {
+    s.state = 'red';
+    styleSignal(s);
+  });
+  clearedCount = 0;
+  updateSignalInfo();
 
   if (ambulanceMarker) map.removeLayer(ambulanceMarker);
   ambulanceMarker = L.marker(routeCoords[0], {
@@ -233,10 +332,11 @@ dispatchBtn.addEventListener('click', function () {
 function removeRoute() {
   routeRequestId++;           // cancels any route request still in progress
   stopAnimation();
+  removeSignals();
   if (routeLine) map.removeLayer(routeLine);
   routeLine = null;
   routeCoords = [];
-  routeInfoText = '';
+  updateSignalInfo();
   updateDispatchButton();
 }
 
@@ -282,10 +382,14 @@ async function drawRoute() {
 
     map.fitBounds(routeLine.getBounds(), { padding: [60, 60] });
 
+    // Measure the route, then place the simulated signals on it
+    prepareRouteLengths();
+    createSignals();
+
     const km = (route.distance / 1000).toFixed(1);
     const mins = Math.max(1, Math.round(route.duration / 60));
-    routeInfoText = 'Route ready: ' + km + ' km, about ' + mins + ' min (normal traffic). Press Dispatch.';
-    statusText.textContent = routeInfoText;
+    statusText.textContent =
+      'Route ready: ' + km + ' km, about ' + mins + ' min (normal traffic). Press Dispatch.';
     updateDispatchButton();
   } catch (err) {
     if (myRequest !== routeRequestId) return;
